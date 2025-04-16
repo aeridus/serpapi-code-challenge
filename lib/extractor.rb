@@ -25,7 +25,7 @@ class Extractor
   def extract(input_path, output_path)
     html = open(input_path)
     doc = Nokogiri::HTML(html)
-    image_hash = extract_images(doc)
+    image_hash = extract_images_from_scripts(doc)
 
     artworks_xml_parent = get_div_by_class(doc, @artworks_class)
     if artworks_xml_parent.length == 0
@@ -46,28 +46,33 @@ class Extractor
   end
 
   # Extract images from the javascript variables and store them in a hash
-  def extract_images(doc)
+  def extract_images_from_scripts(doc)
     image_hash = Hash.new
     scripts_xml = doc.xpath('//script')
     scripts_xml.each do |script_xml|
       script_content = script_xml.content
-      if script_content.include?("_setImagesSrc(ii,s,r);")
-        # Example format: var ii=['_L_FkZ4qlAtyDwbkP49Pj0QU_63'];
-        key_matches = script_content.match(/var ii=\['([^']+)'\];/)
-        if key_matches
-          key = key_matches[1]
-          # Example format: var s='data:image/jpeg;base64,etc';
-          value_matches = script_content.match(/var s='([^']+)';/)
-          if value_matches
-            value = value_matches[1]
-            # Not ideal, but this seems to be the only obfuscated character in the javascript strings. Revisit.
-            value = value.gsub("\\x3d", "=")
-            image_hash[key] = value
-          end
+      extract_image_from_script(image_hash, script_content)
+    end
+    image_hash
+  end
+
+  # Extract image from script content, if present
+  def extract_image_from_script(image_hash, script_content)
+    if script_content.include?("_setImagesSrc(ii,s,r);")
+      # Example format: var ii=['_L_FkZ4qlAtyDwbkP49Pj0QU_63'];
+      key_matches = script_content.match(/var ii=\['([^']+)'\];/)
+      if key_matches
+        key = key_matches[1]
+        # Example format: var s='data:image/jpeg;base64,etc';
+        value_matches = script_content.match(/var s='([^']+)';/)
+        if value_matches
+          value = value_matches[1]
+          # Not ideal, but this seems to be the only obfuscated character in the javascript strings. Revisit.
+          value = value.gsub("\\x3d", "=")
+          image_hash[key] = value
         end
       end
     end
-    image_hash
   end
 
   # Extract an array of Artwork objects from the parent xml
@@ -144,10 +149,15 @@ class Extractor
         raise "Image not found"
       else
         # Use the deferred image data from our javascript variables
-        image_hash[image_id_xml.first.inner_html]
+        image_key = image_id_xml.first.inner_html
+        unless image_hash.has_key?(image_key)
+          raise "Image not found"
+        end
+
+        image_hash[image_key]
       end
     else
-      image_xml.first
+      image_xml.first.inner_html
     end
   end
 

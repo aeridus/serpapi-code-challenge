@@ -4,4 +4,4 @@ source "https://rubygems.org"
 gem "nokogiri"
 gem "open-uri"
 gem "json"
-gem "rspec"
+gem "rspec", :require => false
