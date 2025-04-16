@@ -3,6 +3,7 @@ class ArtworksContainer
     @artworks = artworks
   end
 
+  # Explicitly defines the json structure
   def as_json(options = nil)
     { :artworks => @artworks }
   end

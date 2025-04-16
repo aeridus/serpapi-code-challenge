@@ -6,6 +6,8 @@ class Artwork
     @image = image
   end
 
+  # Explicitly defines the json structure
+  # Only output extensions if it has content
   def as_json(options = nil)
     if @extensions.length > 0
       { :name => @name, :extensions => @extensions, :link => @link, :image => @image }
